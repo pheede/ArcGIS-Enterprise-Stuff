@@ -1,0 +1,62 @@
+
+
+import sys
+import arcpy
+from arcpy import env
+
+
+def main(argv=None):
+
+    # Get Input Parameters
+    env.workspace = "C:/data"
+    env.overwriteOutput = True
+    lineFC = "test.shp"                  #PolylineM featureclass defining the input geometries from which events will be created. Typically roads, pipes etc
+    routeIDFieldName = "RouteName"
+    routeMFieldName = "RouteM"
+    interval = 5                         #Interval separating each event. Units as expressed in the spatial reference of lineFC
+    eventsFC = "events.shp"              #The featureclass with events being served by ArcGIS Server. Typically in a multi-user geodatabase
+    CSVFile_temp = r"C:\Lego\test.tab"   
+    outFeatureClass_temp = "outputFC.shp"
+    
+
+    #Explode line featureclass
+    #Make sure line spatial units is in meters
+
+    #Construct string with events
+    CSVStringConstruct = []
+    CSVStringConstruct.append(RouteName + "\t" + RouteM  + "\n")
+    for row in arcpy.da.SearchCursor(lineFC, ["SHAPE@LENGTH",routeIDFieldName,routeMFieldName]):
+        lineLength = row[0]
+        routeID = row[1]
+        routeM = row[2]
+        eventM = 0
+        while eventM < lineLength
+            CSVStringConstruct.append(routeID)
+            CSVStringConstruct.append('\t')
+            CSVStringConstruct.append(eventM)
+            CSVStringConstruct.append("\n")
+            eventM = eventM + interval
+    CSVString = ''.join (CSVStringConstruct)
+
+    #Create text file, persist events in it
+    outputCSVFile = open(CSVFile_temp,'w')
+    outputCSVFile.write(CSVString)
+    outputCSVFile.close()
+
+    #Create event layer and persist as a featureclass
+    arcpy.MakeRouteEventLayer_lr (lineFC, routeIDFieldName , CSVFile_temp, "RouteID POINT EventM", "Ms", "#", "ERROR_FIELD", "ANGLE_FIELD")
+    arcpy.CopyFeatures_management("Ms", outFeatureClass_temp)
+
+    #Delete old events and push new ones
+    arcpy.DeleteFeatures_management(eventsFC)
+    #Append new events to eventsFC
+    arcpy.Append_management([outFeatureClass_temp], eventsFC, "NO_TEST","","")
+    #Rebuild indexes. IMPORTANT!!
+    #arcpy.RebuildIndexes_management("Database Connections/GDB@DC@server.sde", "NO_SYSTEM","db1.GDB.Roads", "ALL")
+                        
+def getToken(username, password, serverName, serverPort):
+             
+    return "a"
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
