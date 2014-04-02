@@ -1,4 +1,3 @@
-
 import sys
 import arcpy, os
 from arcpy import env
@@ -9,16 +8,19 @@ def main(argv=None):
      # Get Input Parameters
      env.workspace = r"D:\Tests\StatOil\StatOil.gdb"
      env.overwriteOutput = True
-     lineFC = r"Pipelines_Projected"                                                   #PolylineM featureclass defining the input geometries from which events will be created. Typically roads, pipes etc
+     lineFC = r"Pipelines_Projected"                                                       #PolylineM featureclass defining the input geometries from which events will be created. Typically roads, pipes etc
      routeIDFieldName = "FROM_INST"
      routeMFieldName = "RouteM"
-     #interval = 5000                                                                  #Interval separating each event. Units as expressed in the spatial reference of lineFC
+     #interval = 5000                                                                       #Interval separating each event. Units as expressed in the spatial reference of lineFC
      eventsFC = r"D:\Tests\StatOil\gdb in ismael.sde/GDB.DBO.events_"                  #The featureclass with events being served by ArcGIS Server. Typically in a multi-user geodatabase
      CSVFile_temp = r"D:\Tests\StatOil\Temp\test.csv"   
      outFeatureClass_temp = r"D:\Tests\StatOil\Temp\outputFC.shp"
 
      for interval in [50,5000,10000,50000]: 
           UpdateEvents (lineFC,routeIDFieldName,routeMFieldName,interval,eventsFC + str(interval),CSVFile_temp,outFeatureClass_temp)
+          #Rebuild indexes. IMPORTANT!!
+          print "   Update indexes..."
+          arcpy.RebuildIndexes_management(r"D:\Tests\StatOil\gdb in ismael.sde", "NO_SYSTEM","GDB.DBO.events_" +  str(interval), "ALL")
                          
 def UpdateEvents(lineFC, routeIDFieldName, routeMFieldName, interval,eventsFC,CSVFile_temp,outFeatureClass_temp):
 
