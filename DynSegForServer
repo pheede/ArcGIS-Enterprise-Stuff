@@ -1,62 +1,68 @@
 
-
 import sys
-import arcpy
+import arcpy, os
 from arcpy import env
 
 
 def main(argv=None):
 
-    # Get Input Parameters
-    env.workspace = "C:/data"
-    env.overwriteOutput = True
-    lineFC = "test.shp"                  #PolylineM featureclass defining the input geometries from which events will be created. Typically roads, pipes etc
-    routeIDFieldName = "RouteName"
-    routeMFieldName = "RouteM"
-    interval = 5                         #Interval separating each event. Units as expressed in the spatial reference of lineFC
-    eventsFC = "events.shp"              #The featureclass with events being served by ArcGIS Server. Typically in a multi-user geodatabase
-    CSVFile_temp = r"C:\Lego\test.tab"   
-    outFeatureClass_temp = "outputFC.shp"
-    
+     # Get Input Parameters
+     env.workspace = r"D:\Tests\StatOil\StatOil.gdb"
+     env.overwriteOutput = True
+     lineFC = r"Pipelines_Projected"                                                   #PolylineM featureclass defining the input geometries from which events will be created. Typically roads, pipes etc
+     routeIDFieldName = "FROM_INST"
+     routeMFieldName = "RouteM"
+     #interval = 5000                                                                  #Interval separating each event. Units as expressed in the spatial reference of lineFC
+     eventsFC = r"D:\Tests\StatOil\gdb in ismael.sde/GDB.DBO.events_"                  #The featureclass with events being served by ArcGIS Server. Typically in a multi-user geodatabase
+     CSVFile_temp = r"D:\Tests\StatOil\Temp\test.csv"   
+     outFeatureClass_temp = r"D:\Tests\StatOil\Temp\outputFC.shp"
 
-    #Explode line featureclass
-    #Make sure line spatial units is in meters
+     for interval in [50,5000,10000,50000]: 
+          UpdateEvents (lineFC,routeIDFieldName,routeMFieldName,interval,eventsFC + str(interval),CSVFile_temp,outFeatureClass_temp)
+                         
+def UpdateEvents(lineFC, routeIDFieldName, routeMFieldName, interval,eventsFC,CSVFile_temp,outFeatureClass_temp):
 
-    #Construct string with events
-    CSVStringConstruct = []
-    CSVStringConstruct.append(RouteName + "\t" + RouteM  + "\n")
-    for row in arcpy.da.SearchCursor(lineFC, ["SHAPE@LENGTH",routeIDFieldName,routeMFieldName]):
-        lineLength = row[0]
-        routeID = row[1]
-        routeM = row[2]
-        eventM = 0
-        while eventM < lineLength
-            CSVStringConstruct.append(routeID)
-            CSVStringConstruct.append('\t')
-            CSVStringConstruct.append(eventM)
-            CSVStringConstruct.append("\n")
-            eventM = eventM + interval
-    CSVString = ''.join (CSVStringConstruct)
 
-    #Create text file, persist events in it
-    outputCSVFile = open(CSVFile_temp,'w')
-    outputCSVFile.write(CSVString)
-    outputCSVFile.close()
+     print "Processing interval: " + str(interval)
+     print "   Construct events..."                    
+     #Construct string with events
+     CSVStringConstruct = []
+     CSVStringConstruct.append(routeIDFieldName + "," + routeMFieldName  + "\n")
+     lines = arcpy.da.SearchCursor(lineFC, ["SHAPE@LENGTH",routeIDFieldName])
+     for row in lines:
+         lineLength = row[0]
+         routeID = row[1]
+         eventM = 0
+         while eventM < lineLength:
+             CSVStringConstruct.append(str(routeID))
+             CSVStringConstruct.append(',')
+             CSVStringConstruct.append(str(eventM))
+             CSVStringConstruct.append("\n")
+             eventM = eventM + interval
+     CSVString = ''.join (CSVStringConstruct)
 
-    #Create event layer and persist as a featureclass
-    arcpy.MakeRouteEventLayer_lr (lineFC, routeIDFieldName , CSVFile_temp, "RouteID POINT EventM", "Ms", "#", "ERROR_FIELD", "ANGLE_FIELD")
-    arcpy.CopyFeatures_management("Ms", outFeatureClass_temp)
+     print "   Save events to text file..." 
+     #Create text file, persist events in it
+     outputCSVFile = open(CSVFile_temp,'w')
+     outputCSVFile.write(CSVString)
+     outputCSVFile.close()
 
-    #Delete old events and push new ones
-    arcpy.DeleteFeatures_management(eventsFC)
-    #Append new events to eventsFC
-    arcpy.Append_management([outFeatureClass_temp], eventsFC, "NO_TEST","","")
-    #Rebuild indexes. IMPORTANT!!
-    #arcpy.RebuildIndexes_management("Database Connections/GDB@DC@server.sde", "NO_SYSTEM","db1.GDB.Roads", "ALL")
-                        
-def getToken(username, password, serverName, serverPort):
-             
-    return "a"
+     print "   Create event layer..." 
+     #Create event layer and persist as a featureclass
+     arcpy.MakeRouteEventLayer_lr (lineFC, routeIDFieldName , CSVFile_temp, routeIDFieldName + " POINT " + routeMFieldName, "Ms", "#", "NO_ERROR_FIELD", "ANGLE_FIELD")     
+     print "   Save event layer to featureclass..." 
+     arcpy.CopyFeatures_management("Ms", outFeatureClass_temp)
+
+     print "   Deleting events..."
+     #Delete old events and push new ones
+     arcpy.DeleteFeatures_management(eventsFC)
+     print "   Loading events..."
+     #Append new events to eventsFC
+     arcpy.Append_management([outFeatureClass_temp], eventsFC, "NO_TEST","","")
+     print "   Update indexes..."
+     #Rebuild indexes. IMPORTANT!!
+     #arcpy.RebuildIndexes_management("Database Connections/GDB@DC@server.sde", "NO_SYSTEM","db1.GDB.Roads", "ALL")
+     print "   Done"
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:]))
+     sys.exit(main(sys.argv[1:]))
