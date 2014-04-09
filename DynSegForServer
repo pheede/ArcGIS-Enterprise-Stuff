@@ -1,5 +1,4 @@
 #Author: ichivite@esri.com
-#Goal: Test script for StatOil
 
 import sys
 import arcpy, os
