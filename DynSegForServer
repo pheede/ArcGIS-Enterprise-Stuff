@@ -11,9 +11,9 @@ def main(argv=None):
      env.workspace = r"D:\Tests\StatOil\StatOil.gdb"
      env.overwriteOutput = True
      lineFC = r"Pipelines_Projected"                                                        #PolylineM featureclass defining the input geometries from which events will be created. Typically roads, pipes etc
-     routeIDFieldName = "NAME"
-     routeMFieldName = "RouteM"                                                             #Interval separating each event. Units as expressed in the spatial reference of lineFC
+     routeIDFieldName = "NAME"                                                              #The name of the field with unique values representing the route IDs in the PolylineM featureclass
      eventsFC = r"D:\Tests\StatOil\gdb in ismael.sde/GDB.DBO.events_"                       #The featureclass with events being served by ArcGIS Server. Typically in a multi-user geodatabase
+     routeMFieldName = "RouteM"                                                             #The name of the field holding M information in the featureclass with events that will be served
      CSVFile_temp = r"D:\Tests\StatOil\Temp\test.csv"   
      outFeatureClass_temp = r"D:\Tests\StatOil\Temp\outputFC.shp"
 
