@@ -1,15 +1,17 @@
 #Author: ichivite@esri.com
 
-print "Importing ArcPy..."
 import os, arcpy
-path = r"C:\student"
-serverConnection = r"C:\student\connection.ags"
-
+path = r"\\boson\TestFiles\SD"
+serverConnection = r"D:\tests\dlaw.ags"
 dirList=os.listdir(path)
-print "Publishing to: " + serverConnection 
+print "This script publishes all Service Definitions at " + path + " into " + serverConnection
+
 for fname in dirList:
     if '.sd' in fname:
-        print "  Publishing " + fname
-        arcpy.UploadServiceDefinition_server(path + '/' + fname, serverConnection)
+        print " Publishing " + fname
+        try:
+            arcpy.UploadServiceDefinition_server(path + '/' + fname, serverConnection)
+        except Exception, err:
+            print "    ... publishing failed."
 
 s = input ("Done!")
