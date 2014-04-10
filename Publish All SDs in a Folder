@@ -1,0 +1,11 @@
+print "Importing ArcPy..."
+import os, arcpy
+path = r"C:\student"
+serverConnection = r"C:\student\connection.ags"
+dirList=os.listdir(path)
+print "Publishing to: " + serverConnection for fname in dirList:
+    if '.sd' in fname:
+        print "Publishing " + fname
+        arcpy.UploadServiceDefinition_server(path + '/' + fname, serverConnection)
+
+s = input ("Done!")
