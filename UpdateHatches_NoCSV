@@ -1,0 +1,75 @@
+#Author: ichivite@esri.com
+
+import sys
+import arcpy, os
+from arcpy import env
+
+
+def main(argv=None):
+
+     # Get Input Parameters
+     env.workspace = r"D:\Tests\StatOil\StatOil.gdb"
+     env.overwriteOutput = True
+     lineFC = r"Pipelines_Projected" #PolylineM featureclass defining the input geometries from which events will be created. Typically roads, pipes etc
+     routeIDFieldName = "NAME" #The name of the field with unique values representing the route IDs in the PolylineM featureclass
+     eventsFC = r"D:\Tests\StatOil\gdb in ismael.sde/GDB.DBO.events_" #The featureclass with events being served by ArcGIS Server. Typically in a multi-user geodatabase
+     routeMFieldName = "RouteM" #The name of the field holding M information in the featureclass with events that will be served
+     CSVFile_temp = r"D:\Tests\StatOil\Temp\test.csv"
+     outFeatureClass_temp = r"D:\Tests\StatOil\Temp\outputFC.shp"
+
+     for interval in [50000,10000,5000,50]:
+          UpdateEvents (lineFC,routeIDFieldName,routeMFieldName,interval,eventsFC + str(interval),CSVFile_temp,outFeatureClass_temp)
+          #Rebuild indexes. IMPORTANT!!
+          print " Update indexes..."
+          arcpy.RebuildIndexes_management(r"D:\Tests\StatOil\gdb in ismael.sde", "NO_SYSTEM","GDB.DBO.events_" + str(interval), "ALL")
+                         
+def UpdateEvents(lineFC, routeIDFieldName, routeMFieldName, interval,eventsFC,CSVFile_temp,outFeatureClass_temp):
+
+     print "Processing interval: " + str(interval)
+     print " Creating event table..."
+     arcpy.CreateTable_management(arcpy.env.scratchGDB,"temp_Event_Table")
+     event_Table = arcpy.env.scratchGDB + r"/" + "temp_Event_Table"
+     routeIDFieldIndex = arcpy.Describe(lineFC).fieldInfo.findFieldByName (routeIDFieldName)
+     routeIDField = arcpy.ListFields(lineFC)[routeIDFieldIndex]
+     arcpy.AddField_management(event_Table, routeIDFieldName, routeIDField.type, routeIDField.scale,routeIDField.precision)
+     arcpy.AddField_management(event_Table, routeMFieldName, "DOUBLE")
+
+     routeIDField.name, routeIDField.type, 
+
+     print " Populating event table..."
+     #Construct string with events
+     insertCursor = arcpy.da.InsertCursor(event_Table,[routeIDFieldName,routeMFieldName])
+     with arcpy.da.SearchCursor(lineFC, ["SHAPE@",routeIDFieldName]) as lines:
+          for row in lines:
+               lineShape = row[0]
+               startM = lineShape.firstPoint.M
+               endM = lineShape.lastPoint.M
+               #routeID = row[1].encode('utf-8')
+               routeID = row[1]
+               eventM = ((int(startM/interval))*interval)+interval
+               while eventM < endM:
+                    insertCursor.insertRow((routeID,eventM))
+                    eventM = eventM + interval
+     del insertCursor
+
+     print " Create event layer..."
+     #Create event layer and persist as a featureclass
+     arcpy.MakeRouteEventLayer_lr (lineFC, routeIDFieldName , event_Table, routeIDFieldName + " POINT " + routeMFieldName, "Ms", "#", "NO_ERROR_FIELD", "ANGLE_FIELD")
+     print " Save event layer to featureclass..."
+     temp_Event_FC = arcpy.env.scratchGDB + r"/" + "temp_Event_FC"
+     arcpy.CopyFeatures_management("Ms", temp_Event_FC)
+
+     print " Deleting events..."
+     #Delete old events and push new ones
+     arcpy.DeleteFeatures_management(eventsFC)
+     print " Loading events..."
+     #Append new events to eventsFC
+     arcpy.Append_management([temp_Event_FC], eventsFC, "NO_TEST","","")
+     print " Update indexes..."
+     #Rebuild indexes. IMPORTANT!!
+     #arcpy.RebuildIndexes_management("Database Connections/GDB@DC@server.sde", "NO_SYSTEM","db1.GDB.Roads", "ALL")
+     print " Done"
+
+if __name__ == "__main__":
+     sys.exit(main(sys.argv[1:]))
+
