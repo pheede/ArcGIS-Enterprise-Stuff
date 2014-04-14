@@ -1,72 +1,97 @@
 #Author: ichivite@esri.com
-
 import sys
-import arcpy, os
+import arcpy, os, datetime
 from arcpy import env
 
-
 def main(argv=None):
+
 
      # Get Input Parameters
      env.workspace = r"D:\Tests\StatOil\StatOil.gdb"
      env.overwriteOutput = True
-     lineFC = r"Pipelines_Projected"                                                        #PolylineM featureclass defining the input geometries from which events will be created. Typically roads, pipes etc
-     routeIDFieldName = "NAME"                                                              #The name of the field with unique values representing the route IDs in the PolylineM featureclass
-     eventsFC = r"D:\Tests\StatOil\gdb in ismael.sde/GDB.DBO.events_"                       #The featureclass with events being served by ArcGIS Server. Typically in a multi-user geodatabase
-     routeMFieldName = "RouteM"                                                             #The name of the field holding M information in the featureclass with events that will be served
-     CSVFile_temp = r"D:\Tests\StatOil\Temp\test.csv"   
-     outFeatureClass_temp = r"D:\Tests\StatOil\Temp\outputFC.shp"
+     lineFC = r"IHS_Europe_Calibrated_Small"                                 #PolylineM featureclass defining the input geometries from which events will be created. Typically roads, pipes etc
+     routeIDFieldName = "NAME"                                               #The name of the field with unique values representing the route IDs in the PolylineM featureclass
+     eventsFC = r"D:\Tests\StatOil\gdb in ismael.sde/GDB.DBO.events_"        #The featureclass with events being served by ArcGIS Server. Typically in a multi-user geodatabase
+     routeMFieldName = "RouteM"                                              #The name of the field holding M information in the featureclass with events that will be served
+     updateModeReplace = False                                                #2 update modes:
+                                                                             #   If True, the table in the geodatabase (eventsFC) is deleted and a new table with new events is created in its place.
+                                                                             #   If False, the table in the gdb is first cleaned up (remove all events), then new rows are added
+                                                                             #   If using updateModeReplace as True, make sure that your map service has 'schema locking' disabled so you do not have to stop the service while the script executes.
+                                                                             #      I like updateModeReplace as True  because it reduces the time requests to your eventsFC will return inconsistent results
 
-     for interval in [50,5000,10000,50000]:
-          UpdateEvents (lineFC,routeIDFieldName,routeMFieldName,interval,eventsFC + str(interval),CSVFile_temp,outFeatureClass_temp)
-          #Rebuild indexes. IMPORTANT!!
-          print "   Update indexes..."
-          arcpy.RebuildIndexes_management(r"D:\Tests\StatOil\gdb in ismael.sde", "NO_SYSTEM","GDB.DBO.events_" +  str(interval), "ALL")
+     startTime =  datetime.datetime.now()
+     
+     for interval in [50000,10000,5000,50]:
+          eventsFCInterval = eventsFC + str(interval)
+          UpdateEvents (lineFC,routeIDFieldName,routeMFieldName,interval,eventsFCInterval, updateModeReplace)
+
+     endtime =  datetime.datetime.now()
+     diff =  endtime - startTime  
+     print diff
                          
-def UpdateEvents(lineFC, routeIDFieldName, routeMFieldName, interval,eventsFC,CSVFile_temp,outFeatureClass_temp):
+def UpdateEvents(lineFC, routeIDFieldName, routeMFieldName, interval,eventsFC,updateModeReplace):
+
 
      print "Processing interval: " + str(interval)
-     print "   Construct events..."                    
+     print " Creating event table..."
+     arcpy.CreateTable_management("in_memory","temp_Event_Table")
+     event_Table = "in_memory/temp_Event_Table"
+     fields = arcpy.Describe(lineFC).fields
+     routeIDFieldExists=False
+     routeIDFieldName = routeIDFieldName.lower()
+     for field in fields:
+          if field.name.lower()==routeIDFieldName:
+               arcpy.AddField_management(event_Table, routeIDFieldName, field.type, field.scale,field.precision)
+               routeIDFieldExists = True
+     if routeIDFieldExists==False:
+          print " Error! " + routeIDFieldName + " does not exist in: " + lineFC
+          exit
+     arcpy.AddField_management(event_Table, routeMFieldName, "DOUBLE")
+
+
+     print " Populating event table..."
      #Construct string with events
-     CSVStringConstruct = []
-     CSVStringConstruct.append(routeIDFieldName + "," + routeMFieldName  + "\n")
+     insertCursor = arcpy.da.InsertCursor(event_Table,[routeIDFieldName,routeMFieldName])
      with arcpy.da.SearchCursor(lineFC, ["SHAPE@",routeIDFieldName]) as lines:
           for row in lines:
                lineShape = row[0]
                startM = lineShape.firstPoint.M
                endM = lineShape.lastPoint.M
-               routeID = row[1].encode('utf-8')
+               #routeID = row[1].encode('utf-8')
+               routeID = row[1]
                eventM = ((int(startM/interval))*interval)+interval
                while eventM < endM:
-                    CSVStringConstruct.append(str(routeID))
-                    CSVStringConstruct.append(',')
-                    CSVStringConstruct.append(str(eventM))
-                    CSVStringConstruct.append("\n")
+                    insertCursor.insertRow((routeID,eventM))
                     eventM = eventM + interval
-     CSVString = ''.join (CSVStringConstruct)
+     del insertCursor
 
-     print "   Save events to text file..." 
-     #Create text file, persist events in it
-     outputCSVFile = open(CSVFile_temp,'w')
-     outputCSVFile.write(CSVString)
-     outputCSVFile.close()
+     print " Create event layer..."
+     #Create event layer
+     arcpy.MakeRouteEventLayer_lr (lineFC, routeIDFieldName , event_Table, routeIDFieldName + " POINT " + routeMFieldName, "Ms", "#", "NO_ERROR_FIELD", "ANGLE_FIELD")
 
-     print "   Create event layer..." 
-     #Create event layer and persist as a featureclass
-     arcpy.MakeRouteEventLayer_lr (lineFC, routeIDFieldName , CSVFile_temp, routeIDFieldName + " POINT " + routeMFieldName, "Ms", "#", "NO_ERROR_FIELD", "ANGLE_FIELD")     
-     print "   Save event layer to featureclass..." 
-     arcpy.CopyFeatures_management("Ms", outFeatureClass_temp)
+     if updateModeReplace==False:
+          print " Deleting events..."
+          #Delete old events 
+          arcpy.DeleteFeatures_management(eventsFC)
+          print " Loading events..."
+          #Append new events to eventsFC
+          arcpy.Append_management(["Ms"], eventsFC, "NO_TEST","","")
+          #Rebuild indexes. 
+          print " Update indexes..."
+          workspace = os.path.split(eventsFC)[0]
+          tableName = os.path.split(eventsFC)[1]
+          arcpy.RebuildIndexes_management(workspace, "NO_SYSTEM",tableName, "ALL")
+     if updateModeReplace==True:
+          print " Persist events in temporary table..."
+          #Persist events
+          arcpy.CopyFeatures_management("Ms", eventsFC + "_temp")
+          print " Swapping event tables"
+          #Swapping event featureclasses
+          startTime =  datetime.datetime.now()
+          arcpy.Rename_management(eventsFC, eventsFC + "_old", "FeatureClass")
+          arcpy.Rename_management(eventsFC + "_temp", eventsFC, "FeatureClass")
+          #arcpy.Delete_management(eventsFC + "_old", "FeatureClass")
 
-     print "   Deleting events..."
-     #Delete old events and push new ones
-     arcpy.DeleteFeatures_management(eventsFC)
-     print "   Loading events..."
-     #Append new events to eventsFC
-     arcpy.Append_management([outFeatureClass_temp], eventsFC, "NO_TEST","","")
-     print "   Update indexes..."
-     #Rebuild indexes. IMPORTANT!!
-     #arcpy.RebuildIndexes_management("Database Connections/GDB@DC@server.sde", "NO_SYSTEM","db1.GDB.Roads", "ALL")
-     print "   Done"
 
 if __name__ == "__main__":
      sys.exit(main(sys.argv[1:]))
