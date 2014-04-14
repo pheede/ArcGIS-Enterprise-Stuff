@@ -13,7 +13,7 @@ def main(argv=None):
      routeIDFieldName = "NAME"                                               #The name of the field with unique values representing the route IDs in the PolylineM featureclass
      eventsFC = r"D:\Tests\StatOil\gdb in ismael.sde/GDB.DBO.events_"        #The featureclass with events being served by ArcGIS Server. Typically in a multi-user geodatabase
      routeMFieldName = "RouteM"                                              #The name of the field holding M information in the featureclass with events that will be served
-     updateModeReplace = False                                                #2 update modes:
+     updateModeReplace = False                                               #2 update modes:
                                                                              #   If True, the table in the geodatabase (eventsFC) is deleted and a new table with new events is created in its place.
                                                                              #   If False, the table in the gdb is first cleaned up (remove all events), then new rows are added
                                                                              #   If using updateModeReplace as True, make sure that your map service has 'schema locking' disabled so you do not have to stop the service while the script executes.
