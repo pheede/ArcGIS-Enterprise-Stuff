@@ -1,38 +1,47 @@
 #Author: ichivite@esri.com
-
 import sys
-import arcpy, os
+import arcpy, os, datetime
 from arcpy import env
-
 
 def main(argv=None):
 
+     startTime =  datetime.datetime.now()
      # Get Input Parameters
      env.workspace = r"D:\Tests\StatOil\StatOil.gdb"
      env.overwriteOutput = True
-     lineFC = r"Pipelines_Projected"                                         #PolylineM featureclass defining the input geometries from which events will be created. Typically roads, pipes etc
+     lineFC = r"IHS_Europe_Calibrated_Small"                                 #PolylineM featureclass defining the input geometries from which events will be created. Typically roads, pipes etc
      routeIDFieldName = "NAME"                                               #The name of the field with unique values representing the route IDs in the PolylineM featureclass
      eventsFC = r"D:\Tests\StatOil\gdb in ismael.sde/GDB.DBO.events_"        #The featureclass with events being served by ArcGIS Server. Typically in a multi-user geodatabase
      routeMFieldName = "RouteM"                                              #The name of the field holding M information in the featureclass with events that will be served
 
+
      for interval in [50000,10000,5000,50]:
-          UpdateEvents (lineFC,routeIDFieldName,routeMFieldName,interval,eventsFC + str(interval),CSVFile_temp,outFeatureClass_temp)
-          #Rebuild indexes. IMPORTANT!!
-          print " Update indexes..."
-          arcpy.RebuildIndexes_management(r"D:\Tests\StatOil\gdb in ismael.sde", "NO_SYSTEM","GDB.DBO.events_" + str(interval), "ALL")
+          eventsFCInterval = eventsFC + str(interval)
+          UpdateEvents (lineFC,routeIDFieldName,routeMFieldName,interval,eventsFCInterval)
+
+     endtime =  datetime.datetime.now()
+     diff =  endtime - startTime  
+     print diff
                          
 def UpdateEvents(lineFC, routeIDFieldName, routeMFieldName, interval,eventsFC):
 
+
      print "Processing interval: " + str(interval)
      print " Creating event table..."
-     arcpy.CreateTable_management(arcpy.env.scratchGDB,"temp_Event_Table")
-     event_Table = arcpy.env.scratchGDB + r"/" + "temp_Event_Table"
-     routeIDFieldIndex = arcpy.Describe(lineFC).fieldInfo.findFieldByName (routeIDFieldName)
-     routeIDField = arcpy.ListFields(lineFC)[routeIDFieldIndex]
-     arcpy.AddField_management(event_Table, routeIDFieldName, routeIDField.type, routeIDField.scale,routeIDField.precision)
+     arcpy.CreateTable_management("in_memory","temp_Event_Table")
+     event_Table = "in_memory/temp_Event_Table"
+     fields = arcpy.Describe(lineFC).fields
+     routeIDFieldExists=False
+     routeIDFieldName = routeIDFieldName.lower()
+     for field in fields:
+          if field.name.lower()==routeIDFieldName:
+               arcpy.AddField_management(event_Table, routeIDFieldName, field.type, field.scale,field.precision)
+               routeIDFieldExists = True
+     if routeIDFieldExists==False:
+          print " Error! " + routeIDFieldName + " does not exist in: " + lineFC
+          exit
      arcpy.AddField_management(event_Table, routeMFieldName, "DOUBLE")
 
-     routeIDField.name, routeIDField.type, 
 
      print " Populating event table..."
      #Construct string with events
@@ -51,23 +60,20 @@ def UpdateEvents(lineFC, routeIDFieldName, routeMFieldName, interval,eventsFC):
      del insertCursor
 
      print " Create event layer..."
-     #Create event layer and persist as a featureclass
+     #Create event layer
      arcpy.MakeRouteEventLayer_lr (lineFC, routeIDFieldName , event_Table, routeIDFieldName + " POINT " + routeMFieldName, "Ms", "#", "NO_ERROR_FIELD", "ANGLE_FIELD")
-     print " Save event layer to featureclass..."
-     temp_Event_FC = arcpy.env.scratchGDB + r"/" + "temp_Event_FC"
-     arcpy.CopyFeatures_management("Ms", temp_Event_FC)
-
      print " Deleting events..."
      #Delete old events and push new ones
      arcpy.DeleteFeatures_management(eventsFC)
      print " Loading events..."
      #Append new events to eventsFC
-     arcpy.Append_management([temp_Event_FC], eventsFC, "NO_TEST","","")
+     arcpy.Append_management(["Ms"], eventsFC, "NO_TEST","","")
+     #Rebuild indexes. 
      print " Update indexes..."
-     #Rebuild indexes. IMPORTANT!!
-     #arcpy.RebuildIndexes_management("Database Connections/GDB@DC@server.sde", "NO_SYSTEM","db1.GDB.Roads", "ALL")
-     print " Done"
+     workspace = os.path.split(eventsFC)[0]
+     tableName = os.path.split(eventsFC)[1]
+     arcpy.RebuildIndexes_management(workspace, "NO_SYSTEM",tableName, "ALL")
+
 
 if __name__ == "__main__":
      sys.exit(main(sys.argv[1:]))
-
