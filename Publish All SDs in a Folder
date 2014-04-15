@@ -1,8 +1,12 @@
 #Author: ichivite@esri.com
 
 import os, arcpy
-path = r"\\boson\TestFiles\SD"
-serverConnection = r"D:\tests\dlaw.ags"
+path = r"\\boson\TestFiles\SD"                                      #Path to folder containing Service Definitions
+serverConnection = r"D:\tests\ismael.ags"                           #ArcGIS Server connection file
+
+#TODO: Process all foldeers within input directory 
+#TODO: Start as many threads as PublishingTools GP Service instane are set to max
+
 dirList=os.listdir(path)
 print "This script publishes all Service Definitions at " + path + " into " + serverConnection
 
