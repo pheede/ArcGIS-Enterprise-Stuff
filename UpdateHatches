@@ -9,15 +9,16 @@ def main(argv=None):
      # Get Input Parameters
      env.workspace = r"D:\Tests\StatOil\StatOil.gdb"
      env.overwriteOutput = True
-     lineFC = r"IHS_Europe_Calibrated_Small"                                 #PolylineM featureclass defining the input geometries from which events will be created. Typically roads, pipes etc
+     lineFC = r"IHS_Europe_Calibrated_Small"                                 #PolylineM featureclass defining the input geometries for which hatches will be created. Typically roads, pipes etc
      routeIDFieldName = "NAME"                                               #The name of the field with unique values representing the route IDs in the PolylineM featureclass
-     eventsFC = r"D:\Tests\StatOil\gdb in ismael.sde/GDB.DBO.events_"        #The featureclass with events being served by ArcGIS Server. Typically in a multi-user geodatabase
+     eventsFC = r"D:\Tests\StatOil\gdb in ismael.sde/GDB.DBO.events_"        #The point featureclass representing hatches being served by ArcGIS Server. Typically in a multi-user geodatabase
      routeMFieldName = "RouteM"                                              #The name of the field holding M information in the featureclass with events that will be served
      updateModeReplaceTable = True                                           #2 update modes:
                                                                              #   If True, the table in the geodatabase (eventsFC) is deleted and a new table with new events is created in its place.
-                                                                             #   If False, the table in the gdb is first cleaned up (remove all events), then new rows are added
+                                                                             #   If False, the table in the gdb is first cleaned up (remove all rows), then new rows are added and indexes rebuilt
                                                                              #   If using updateModeReplace as True, make sure that your map service has 'schema locking' disabled so you do not have to stop the service while the script executes.
-                                                                             #      I like updateModeReplace as True  because it reduces the time requests to your eventsFC will return inconsistent results
+                                                                             #      I like updateModeReplaceTable as True  because it reduces the time requests to your eventsFC will return inconsistent results
+                                                                             #      It is also comparatively faster, particularly as the size of the tables grows
 
      startTime =  datetime.datetime.now()
      
@@ -27,7 +28,7 @@ def main(argv=None):
 
      endtime =  datetime.datetime.now()
      diff =  endtime - startTime  
-     print diff
+     print "Time elapsed: " + diff
                          
 def UpdateEvents(lineFC, routeIDFieldName, routeMFieldName, interval,eventsFC,updateModeReplaceTable):
 
