@@ -8,14 +8,15 @@ serverConnection = r"D:\tests\ismael.ags"                           #ArcGIS Serv
 #TODO: Start as many threads as PublishingTools GP Service instane are set to max
 
 dirList=os.listdir(path)
-print "This script publishes all Service Definitions at " + path + " into " + serverConnection
+print "This script publishes all Service Definitions at {0} into {1}".format(path, serverConnection)
 
 for fname in dirList:
     if '.sd' in fname:
         print " Publishing " + fname
         try:
-            arcpy.UploadServiceDefinition_server(path + '/' + fname, serverConnection)
+            serviceDefinitionFile = os.path.join(path,fname)
+            arcpy.UploadServiceDefinition_server(serviceDefinitionFile, serverConnection)
         except Exception, err:
-            print "    ... publishing failed."
+            print "    ... publishing failed. {0}".format(fname)
 
 s = input ("Done!")
