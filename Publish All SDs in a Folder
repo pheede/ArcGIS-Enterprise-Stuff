@@ -1,21 +1,23 @@
 #Author: ichivite@esri.com
 
-import os, arcpy
+import os, arcpy, queue
+
 path = r"\\boson\TestFiles\SD"                                      #Path to folder containing Service Definitions
 serverConnection = r"D:\tests\ismael.ags"                           #ArcGIS Server connection file
 
-#TODO: Process all foldeers within input directory 
 #TODO: Start as many threads as PublishingTools GP Service instane are set to max
 
-dirList=os.listdir(path)
 print "This script publishes all Service Definitions at {0} into {1}".format(path, serverConnection)
 
+#Build a Queue containing all service definition files within the input folder and its subdirectories
+queue = Queue.Queue()
 for root, subFolders, files in os.walk(path):
     for fname in files:
         if '.sd' in fname:
              print " Publishing " + fname
+             serviceDefinitionFile = os.path.join(path,fname)
+             queue.put(serviceDefinitionFile)
              try:
-                serviceDefinitionFile = os.path.join(path,fname)
                 arcpy.UploadServiceDefinition_server(serviceDefinitionFile, serverConnection)
             except Exception, err:
                 print "    ... publishing failed. {0}".format(fname)
