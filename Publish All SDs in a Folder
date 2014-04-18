@@ -13,7 +13,9 @@ def main(argv=None):
     queue = Queue.Queue()
     for root, subFolders, files in os.walk(path):
         for fname in files:
-            if '.sd' in fname:
+            extension = os.path.splitext(filename)[1][1:].strip().lower()
+            if extension == 'sd':
+                 
                 print " Publishing " + fname
                 serviceDefinitionFile = os.path.join(path,fname)
                 queue.put(serviceDefinitionFile)
