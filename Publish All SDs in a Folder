@@ -10,13 +10,14 @@ serverConnection = r"D:\tests\ismael.ags"                           #ArcGIS Serv
 dirList=os.listdir(path)
 print "This script publishes all Service Definitions at {0} into {1}".format(path, serverConnection)
 
-for fname in dirList:
-    if '.sd' in fname:
-        print " Publishing " + fname
-        try:
-            serviceDefinitionFile = os.path.join(path,fname)
-            arcpy.UploadServiceDefinition_server(serviceDefinitionFile, serverConnection)
-        except Exception, err:
-            print "    ... publishing failed. {0}".format(fname)
+for root, subFolders, files in os.walk(path):
+    for fname in files:
+        if '.sd' in fname:
+             print " Publishing " + fname
+             try:
+                serviceDefinitionFile = os.path.join(path,fname)
+                arcpy.UploadServiceDefinition_server(serviceDefinitionFile, serverConnection)
+            except Exception, err:
+                print "    ... publishing failed. {0}".format(fname)
 
 s = input ("Done!")
