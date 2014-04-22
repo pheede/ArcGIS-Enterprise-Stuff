@@ -1,6 +1,6 @@
 #Author: ichivite@esri.com
 #Built with ArcGIS 10.2.2
-#Latest here: https://github.com/Cintruenigo/ArcGIS-Server-Stuff/edit/master/Publish%20All%20SDs%20in%20a%20Folder
+#Latest here: https://github.com/Cintruenigo/ArcGIS-Server-Stuff/blob/master/PublishAllSDsinFolder
 
 import os, arcpy, Queue,threading,time
 
