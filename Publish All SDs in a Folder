@@ -1,34 +1,58 @@
 #Author: ichivite@esri.com
+#Built with ArcGIS 10.2.2
 
-import os, arcpy, queue
+import os, arcpy, Queue,threading,time
 
-def main(argv=None):
+def main():
 
-    path = r"\\boson\TestFiles\SD"                                      #Path to folder containing Service Definitions
-    serverConnection = r"D:\tests\ismael.ags"                           #ArcGIS Server connection file
+    path = r"D:\Ismael\Demos\AdminAPI" #Path to folder containing Service Definitions
+    serverConnection = r"D:\Ismael\Demos\AdminAPI\ismael.ags" #ArcGIS Server connection file
+    thread_count = 2
 
     print "This script publishes all Service Definitions at {0} into {1}".format(path, serverConnection)
 
     #Build a Queue containing all service definition files within the input folder and its subdirectories
-    queue = Queue.Queue()
+    serviceDefinitionQueue = Queue.Queue()
     for root, subFolders, files in os.walk(path):
         for fname in files:
-            extension = os.path.splitext(filename)[1][1:].strip().lower()
+            extension = os.path.splitext(fname)[1][1:].strip().lower()
             if extension == 'sd':
-                 
-                print " Publishing " + fname
                 serviceDefinitionFile = os.path.join(path,fname)
-                queue.put(serviceDefinitionFile)
-                try:
-                    arcpy.UploadServiceDefinition_server(serviceDefinitionFile, serverConnection)
-                except Exception, err:
-                    print "    ... publishing failed. {0}".format(fname)
-                    
-    #Create a pool of threads
-    
-    #Start threads
-    
-    #Wait for threads to finish
+                print " Adding to queue " + serviceDefinitionFile
+                serviceDefinitionQueue.put(serviceDefinitionFile)
 
+                    
+    # Create a pool of threads
+    thread_list = []
+    for i in range (thread_count):
+        t = threading.Thread(target=publishServiceDefinitionFile, args = (serverConnection,serviceDefinitionQueue))
+        thread_list.append(t)
+
+    # Start threads
+    for thread in thread_list:
+        print " Starting new thread... "
+        thread.start()
+        
+
+    # Wait for threads to finish
+    for thread in thread_list:
+        thread.join()
+
+def publishServiceDefinitionFile(arcgisServerConnectionFile,serviceDefinitionQueue):
+    
+    itemsLeftInQueue = True
+    while itemsLeftInQueue:
+        try:
+            serviceDefinitionFile = serviceDefinitionQueue.get(False)
+        except Queue.Empty:
+            itemsLeftInQueue = False
+            return
+        try:
+            print " ... publishing: {0}".format(serviceDefinitionFile)
+            arcpy.UploadServiceDefinition_server(serviceDefinitionFile, arcgisServerConnectionFile)
+        except Exception as e:
+            print e.message
+            arcpy.AddError(e.message)
+        
 if __name__ == "__main__":
-     sys.exit(main(sys.argv[1:]))
+     main()
