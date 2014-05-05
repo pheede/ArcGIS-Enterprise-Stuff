@@ -22,7 +22,7 @@ def setupReferer():
     _referer = socket.gethostbyaddr(ip)[0]
 
 def getToken(baseurl, username, password):
-    url = url = urlparse.urljoin(baseurl, '/arcgis/admin/generateToken')
+    url = urlparse.urljoin(baseurl, '/arcgis/admin/generateToken')
 
     """ Generates and returns a new token. """
     postdata = { 'username': username, 'password': password,
@@ -52,7 +52,6 @@ def _tostr(obj):
 def _get_content_type(filename):
     return mimetypes.guess_type(filename)[0] or 'application/octet-stream'
 
-    
 def _encode_multipart_formdata(fields, files):
     boundary = mimetools.choose_boundary()
     buf = StringIO()
@@ -120,7 +119,8 @@ def publishService(baseurl, token, itemid):
     raise Exception('Unable to publish item {0}'.format(itemid))
 
     
-def main(path, baseurl, token):
+def main(path, baseurl, username, password):
+    token = getToken(baseurl, username, password)
 
     print('This script publishes all Service Definitions at {0} into {1}'.format(path, baseurl))
     
@@ -133,28 +133,25 @@ def main(path, baseurl, token):
                 print(' Adding to queue {0}'.format(serviceDefinitionFile))
                 serviceDefinitionQueue.put(serviceDefinitionFile)
 
-                    
     # Create a pool of threads
     thread_list = []
     for i in range (thread_count):
-        t = threading.Thread(target=publishServiceDefinitionFile, args = (baseurl, token))
+        t = threading.Thread(target=publisherThread, args = (baseurl, token))
         t.daemon = True
         thread_list.append(t)
 
     # Start threads
     for thread in thread_list:
-        print(' Starting new thread... ')
         thread.start()
 
     # Wait for queue to be empty
     serviceDefinitionQueue.join()
     
-    print('All .sd files have been sent to the server for publishing. Services will keep starting for a while, please check the server services directory for status.')
+    print('All .sd files have been sent to the server for publishing.')
+    print('Services will keep starting for a while, please check the server services directory for status.')
 
-
-def publishServiceDefinitionFile(baseurl, token):
-    
-    while serviceDefinitionQueue.empty :
+def publisherThread(baseurl, token):
+    while not serviceDefinitionQueue.empty():
         try:
             serviceDefinitionFile = serviceDefinitionQueue.get()
             print(' ... publishing: {0}'.format(serviceDefinitionFile))
@@ -176,7 +173,7 @@ if __name__ == '__main__':
         username = sys.argv[3]
         password = sys.argv[4]
     except:
-        print('"Usage:')
+        print('Usage:')
         print('PublishAllSDsinFolder.py <folderWithSDs> <serverPath> <username> <password>')
         print('')
         print('E.g.: PublishAllSDsinFolder.py d:\\temp https://server1.example.com:6443 siteadmin sitepassword')
@@ -189,6 +186,4 @@ if __name__ == '__main__':
     print('Initializing..')
     setupReferer()
     
-    token = getToken(baseurl, username, password)
-    
-    main(path, baseurl, token)
+    main(path, baseurl, username, password)
