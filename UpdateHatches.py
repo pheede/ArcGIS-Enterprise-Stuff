@@ -1,5 +1,7 @@
-#Author: ichivite@esri.com
-import sys
+# Author: ichivite@esri.com
+# Tested with ArcGIS for Server 10.2.2
+# Latest here: https://github.com/Cintruenigo/ArcGIS-Server-Stuff/edit/master/UpdateHatches.py
+
 import arcpy, os, datetime
 from arcpy import env
 
