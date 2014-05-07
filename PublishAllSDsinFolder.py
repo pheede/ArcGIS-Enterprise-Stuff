@@ -14,6 +14,56 @@ serviceDefinitionQueue = Queue.Queue()
 
 # setup _referer variable with local hostname, used by various methods later on
 _referer = None
+   
+def main(path, baseurl, token):
+
+    print('Publishes all Service Definitions at {0} into {1}'.format(path, baseurl))
+    
+    #Build a Queue containing all service definition files within the input folder and its subdirectories
+    for root, subFolders, files in os.walk(path):
+        for fname in files:
+            extension = os.path.splitext(fname)[1][1:].strip().lower()
+            if extension == 'sd':
+                serviceDefinitionFile = os.path.join(path,fname)
+                print(' {0}'.format(serviceDefinitionFile))
+                serviceDefinitionQueue.put(serviceDefinitionFile)
+
+                    
+    # Create a pool of threads
+    thread_list = []
+    for i in range (thread_count):
+        t = threading.Thread(target=publishServiceDefinitionFile, args = (baseurl, token))
+        #t.daemon = True
+        t.start()
+        thread_list.append(t)
+
+    print('Publishing...')
+    # Wait for threads to finish
+    #for thread in thread_list:
+    #    thread.join()
+
+    # Wait for queue to be empty
+    serviceDefinitionQueue.join()
+   
+    print('All .sd files have been sent to the server for publishing. Services will keep starting for a while, please check the server services directory for status.')
+
+
+def publishServiceDefinitionFile(baseurl, token):
+    
+    while serviceDefinitionQueue.empty :
+        try:
+            serviceDefinitionFile = serviceDefinitionQueue.get()
+            #print(' ... publishing: {0}'.format(serviceDefinitionFile))
+            
+            try:
+                itemid = uploadFile(baseurl, token, serviceDefinitionFile)
+                publishService(baseurl, token, itemid)
+            except:
+                print(' ... publishing of {0} failed'.format(serviceDefinitionFile))
+            
+            serviceDefinitionQueue.task_done()
+        except Exception as e:
+            print(e.message)
 
 def setupReferer():
     global _referer
@@ -22,7 +72,7 @@ def setupReferer():
     _referer = socket.gethostbyaddr(ip)[0]
 
 def getToken(baseurl, username, password):
-    url = url = urlparse.urljoin(baseurl, '/arcgis/admin/generateToken')
+    url = urlparse.urljoin(baseurl, '/arcgis/admin/generateToken')
 
     """ Generates and returns a new token. """
     postdata = { 'username': username, 'password': password,
@@ -115,66 +165,21 @@ def publishService(baseurl, token, itemid):
     resp_data = resp.read() # read raw response
     resp_json = json.loads(resp_data) # parse json response
 
-    if resp_json: return 
+    if resp_json: return
         
     raise Exception('Unable to publish item {0}'.format(itemid))
-
-    
-def main(path, baseurl, token):
-
-    print('This script publishes all Service Definitions at {0} into {1}'.format(path, baseurl))
-    
-    #Build a Queue containing all service definition files within the input folder and its subdirectories
-    for root, subFolders, files in os.walk(path):
-        for fname in files:
-            extension = os.path.splitext(fname)[1][1:].strip().lower()
-            if extension == 'sd':
-                serviceDefinitionFile = os.path.join(path,fname)
-                print(' Adding to queue {0}'.format(serviceDefinitionFile))
-                serviceDefinitionQueue.put(serviceDefinitionFile)
-
-                    
-    # Create a pool of threads
-    thread_list = []
-    for i in range (thread_count):
-        t = threading.Thread(target=publishServiceDefinitionFile, args = (baseurl, token))
-        t.daemon = True
-        thread_list.append(t)
-
-    # Start threads
-    for thread in thread_list:
-        print(' Starting new thread... ')
-        thread.start()
-
-    # Wait for queue to be empty
-    serviceDefinitionQueue.join()
-    
-    print('All .sd files have been sent to the server for publishing. Services will keep starting for a while, please check the server services directory for status.')
-
-
-def publishServiceDefinitionFile(baseurl, token):
-    
-    while serviceDefinitionQueue.empty :
-        try:
-            serviceDefinitionFile = serviceDefinitionQueue.get()
-            print(' ... publishing: {0}'.format(serviceDefinitionFile))
-            
-            try: 
-                itemid = uploadFile(baseurl, token, serviceDefinitionFile)
-                publishService(baseurl, token, itemid)
-            except:
-                print(' ... publishing of {0} failed'.format(serviceDefinitionFile))
-            
-            serviceDefinitionQueue.task_done()
-        except Exception as e:
-            print(e.message)
         
 if __name__ == '__main__':
     try:
-        path = sys.argv[1]
-        baseurl = sys.argv[2]
-        username = sys.argv[3]
-        password = sys.argv[4]
+        #path = sys.argv[1]
+        #baseurl = sys.argv[2]
+        #username = sys.argv[3]
+        #password = sys.argv[4]
+
+        path = r'D:\Ismael\Demos\AdminAPI'
+        baseurl = 'http://ismael.esri.com:6080'
+        username = 'psa'
+        password = 'psa'
     except:
         print('"Usage:')
         print('PublishAllSDsinFolder.py <folderWithSDs> <serverPath> <username> <password>')
@@ -192,3 +197,4 @@ if __name__ == '__main__':
     token = getToken(baseurl, username, password)
     
     main(path, baseurl, token)
+
