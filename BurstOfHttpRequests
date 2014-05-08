@@ -2,7 +2,7 @@
 # Tested with ArcGIS for Server 10.2.2
 # Latest here: https://github.com/Cintruenigo/ArcGIS-Server-Stuff/blob/master/BurstOfHttpRequests
 
-import os, arcpy, Queue,threading,time
+import os, Queue,threading,time
 import urllib
 import urllib2
 
@@ -12,6 +12,7 @@ urlQueue = Queue.Queue()
 
 def main():
 
+    print "This script will invoke URLs in " + urlFilePath + " using " + str(thread_count) + " concurrent threads with no think-time"
     #Fill Queue containing all urls to be invoked
     urlFile = open( urlFilePath, "r" )
     for line in urlFile:
@@ -22,19 +23,22 @@ def main():
     # Create a pool of threads
     thread_list = []
     for i in range (thread_count):
-        name = str(i)
-        print name
         t = threading.Thread(target=requestURL)
         t.daemon = True
         thread_list.append(t)
 
+    start = time.time()
+
     # Start threads
     for thread in thread_list:
-        print " Starting new thread... "
+        #print " Starting new thread... "
         thread.start()
 
     # Wait for queue to be emptied
     urlQueue.join()
+    end = time.time()
+
+    print "Elapsed time in seconds: " + str(end - start)
 
 def requestURL():
     while urlQueue.empty :
