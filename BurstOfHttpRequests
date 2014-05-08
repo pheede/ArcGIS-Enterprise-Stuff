@@ -1,0 +1,54 @@
+#Author: ichivite@esri.com
+
+import os, arcpy, Queue,threading,time
+import urllib
+import urllib2
+
+urlFilePath = r"D:\Ismael\Demos\AdminAPI\urls.txt"
+thread_count = 80
+urlQueue = Queue.Queue()
+
+def main():
+
+    #Fill Queue containing all urls to be invoked
+    urlFile = open( urlFilePath, "r" )
+    for line in urlFile:
+        urlQueue.put(line)
+    urlFile.close()
+                
+                   
+    # Create a pool of threads
+    thread_list = []
+    for i in range (thread_count):
+        name = str(i)
+        print name
+        t = threading.Thread(target=requestURL)
+        t.daemon = True
+        thread_list.append(t)
+
+    # Start threads
+    for thread in thread_list:
+        print " Starting new thread... "
+        thread.start()
+
+    # Wait for queue to be emptied
+    urlQueue.join()
+
+def requestURL():
+    while urlQueue.empty :
+        try:
+            url = urlQueue.get()
+            #url = "http://ismael.esri.com:6080/arcgis/rest/services/Naperville/NapervilleStreetNetwork/MapServer/7/query?where=2%3D2&text=&objectIds=&time=&geometry=&geometryType=esriGeometryEnvelope&inSR=&spatialRel=esriSpatialRelIntersects&relationParam=&outFields=&returnGeometry=true&maxAllowableOffset=&geometryPrecision=&outSR=&returnIdsOnly=false&returnCountOnly=false&orderByFields=&groupByFieldsForStatistics=&outStatistics=&returnZ=false&returnM=false&gdbVersion=&returnDistinctValues=false"
+            print "hit"
+            params = { 'f' : 'pjson'}
+            qData = urllib.urlencode(params)
+            req = urllib2.Request(url, qData, {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'})
+            response = urllib2.urlopen(req)
+            #print "Response: " + response.read()
+            urlQueue.task_done()
+            print 'done'
+        except Exception as e:
+            print e.message
+        
+if __name__ == "__main__":
+     main()
