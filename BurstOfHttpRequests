@@ -1,11 +1,13 @@
-#Author: ichivite@esri.com
+# Author: ichivite@esri.com
+# Tested with ArcGIS for Server 10.2.2
+# Latest here: https://github.com/Cintruenigo/ArcGIS-Server-Stuff/blob/master/BurstOfHttpRequests
 
 import os, arcpy, Queue,threading,time
 import urllib
 import urllib2
 
-urlFilePath = r"D:\Ismael\Demos\AdminAPI\urls.txt"
-thread_count = 80
+urlFilePath = r"D:\Ismael\Demos\AdminAPI\urls.txt"         #Text file containing the URLs you want to be hit. One URL per line
+thread_count = 80                                          #Number of threads to process your file
 urlQueue = Queue.Queue()
 
 def main():
@@ -39,7 +41,6 @@ def requestURL():
         try:
             url = urlQueue.get()
             #url = "http://ismael.esri.com:6080/arcgis/rest/services/Naperville/NapervilleStreetNetwork/MapServer/7/query?where=2%3D2&text=&objectIds=&time=&geometry=&geometryType=esriGeometryEnvelope&inSR=&spatialRel=esriSpatialRelIntersects&relationParam=&outFields=&returnGeometry=true&maxAllowableOffset=&geometryPrecision=&outSR=&returnIdsOnly=false&returnCountOnly=false&orderByFields=&groupByFieldsForStatistics=&outStatistics=&returnZ=false&returnM=false&gdbVersion=&returnDistinctValues=false"
-            print "hit"
             params = { 'f' : 'pjson'}
             qData = urllib.urlencode(params)
             req = urllib2.Request(url, qData, {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'})
