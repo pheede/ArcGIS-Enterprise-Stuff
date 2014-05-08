@@ -40,14 +40,12 @@ def requestURL():
     while urlQueue.empty :
         try:
             url = urlQueue.get()
-            #url = "http://ismael.esri.com:6080/arcgis/rest/services/Naperville/NapervilleStreetNetwork/MapServer/7/query?where=2%3D2&text=&objectIds=&time=&geometry=&geometryType=esriGeometryEnvelope&inSR=&spatialRel=esriSpatialRelIntersects&relationParam=&outFields=&returnGeometry=true&maxAllowableOffset=&geometryPrecision=&outSR=&returnIdsOnly=false&returnCountOnly=false&orderByFields=&groupByFieldsForStatistics=&outStatistics=&returnZ=false&returnM=false&gdbVersion=&returnDistinctValues=false"
             params = { 'f' : 'pjson'}
             qData = urllib.urlencode(params)
             req = urllib2.Request(url, qData, {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'})
             response = urllib2.urlopen(req)
             #print "Response: " + response.read()
             urlQueue.task_done()
-            print 'done'
         except Exception as e:
             print e.message
         
