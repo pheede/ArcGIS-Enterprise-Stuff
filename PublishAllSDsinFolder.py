@@ -94,6 +94,13 @@ def uploadFile(baseurl, token, file):
     try: return resp_json['item']['itemID']
     except: raise Exception('Unable to upload file {0}'.format(file))
 
+def getPublishingServiceMaxInstances(baseurl, token):
+    url = urlparse.urljoin(baseurl, '/arcgis/admin/services/System/PublishingTools.GPServer')
+    
+    resp_json = _post(url, { 'token' : token })
+    
+    return int(resp_json['maxInstancesPerNode'])
+    
 def publishService(baseurl, token, itemid):
     url = urlparse.urljoin(baseurl, '/arcgis/rest/services/System/PublishingTools/GPServer/Publish%20Service%20Definition/submitJob')
     
@@ -120,6 +127,13 @@ def main(path, baseurl, username, password):
     token = getToken(baseurl, username, password)
 
     print('This script publishes all Service Definitions at {0} into {1}'.format(path, baseurl))
+    
+    # check the max instances for the publishing endpoint and output warning if default (or less) is in use
+    maxInstances = getPublishingServiceMaxInstances(baseurl, token)
+    
+    if maxInstances <= 2:
+        print('NOTE: The site is using a max of {0} processes per server to publish services.'.format(maxInstances))
+        print('Increase the max instances if server resources allow.')
 
     # build a Queue containing all service definition files within the input folder and its subdirectories
     for root, subFolders, files in os.walk(path):
