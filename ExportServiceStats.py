@@ -1,4 +1,4 @@
-# Export statistics for a given service
+# Demonstrates how to export service statistics to a CSV file.
 # ArcGIS Server 10.3 or higher
 
 # For HTTP calls
@@ -6,7 +6,7 @@ import httplib, urllib, urllib2, json
 # For time-based functions
 import time, uuid
 # For system tools
-import sys
+import sys, os
 # For reading passwords without echoing
 import getpass
 # For writing csv files
@@ -16,7 +16,7 @@ import csv
 def main(argv=None):
     # Print some info
     print("")
-    print("This tool is a sample script exports service statistics to a CSV file.")
+    print("This tool demonstrates how to export service statistics to a CSV file.")
     print("")
     
     # Ask for admin/publisher user name and password
@@ -24,13 +24,13 @@ def main(argv=None):
     password = getpass.getpass("Enter password: ")
     
     # Ask for server name
-    serverName = raw_input("Enter Server name: ")
+    serverName = raw_input("Enter server name: ")
     serverPort = 6080 # assumes server is enabled for HTTP access, HTTPS only sites will require (minor) script changes
 
     # Ask for FromTime
     fromTime = 0
     while fromTime == 0:
-        fromTime = raw_input("Report from (server time in YYYY-MM-DD HH:MM format: ")
+        fromTime = raw_input("Start date and time of report in YYYY-MM-DD HH:MM format (e.g. 2014-05-10 14:00): ")
         # Convert input to Python struct_time and then to Unix timestamp in ms
         try: fromTime = int(time.mktime(time.strptime(fromTime, '%Y-%m-%d %H:%M'))*1000) 
         except:
@@ -40,7 +40,7 @@ def main(argv=None):
     # Ask for ToTime
     toTime = 0
     while toTime == 0:
-        toTime = raw_input("Report to (server time in YYYY-MM-DD HH:MM format: ")
+        toTime = raw_input("End date and time of report in YYYY-MM-DD HH:MM format (e.g. 2014-05-10 14:00): ")
         # Convert input to Python struct_time and then to Unix timestamp in ms
         try: toTime = int(time.mktime(time.strptime(toTime, '%Y-%m-%d %H:%M'))*1000)
         except: 
@@ -48,14 +48,15 @@ def main(argv=None):
             toTime = 0
     
     # Ask for time interval
-    interval = int(raw_input("Time interval for report (in minutes): "))
+    interval = int(raw_input("Time interval to report statistics (in minutes): "))
     
     # Ask for service name
-    serviceName = raw_input("Service name including type (e.g. folder1/MyService.MapServer): ")
+    serviceName = raw_input("Service name and type.  If the service is nested in a folder, include the folder name (for example, planning/firehydrants.MapServer): ")
     if not serviceName.startswith('services/'): serviceName = "services/" + serviceName
     
     # Ask for output csv file name
-    fileName = raw_input("Enter output CSV file name: ")
+    fileName = raw_input("Enter the name of the output CSV file to be created: ")
+    if os.path.splitext(fileName)[1] == '': fileName = fileName + ".csv"
     
     # Get a token
     token = getToken(username, password, serverName, serverPort)
