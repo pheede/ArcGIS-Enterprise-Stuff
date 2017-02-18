@@ -1,9 +1,11 @@
 """This script validates an ArcGIS Enterprise deployment to ensure it is
 configured properly with all the required components such as Portal for ArcGIS,
-ArcGIS Server, ArcGIS Data Store and the associated configuration."""
+ArcGIS Server, ArcGIS Data Store and the associated configuration.
+
+Designed for ArcGIS Enterprise 10.5 and higher."""
 
 # Author: Philip Heede <pheede@esri.com>
-# Last modified: 2017-02-17
+# Last modified: 2017-02-18
 
 import os
 import sys
@@ -83,30 +85,58 @@ def main(argv):
     supportsHostedServices = portalSelf['supportsHostedServices']
     supportsSceneServices = portalSelf['supportsSceneServices']
 
+    # check analysis tools helper service registration and valid url
+    analysisHelperServiceRegistered = False
+    if 'analysis' in portalSelf['helperServices']:
+        if 'url' in portalSelf['helperServices']['analysis']:
+            analysisHelperService = portalSelf['helperServices']['analysis']['url']
+            analysisHelperServiceRegistered = analysisHelperService != ''
+
+    # enumerate federated servers and find hosting server
     federatedServers = getFederatedServers(portalUrl, token)
     hostingServer = None
     for server in federatedServers:
         if 'serverRole' in server:
             serverRole = server['serverRole']
             if serverRole == 'HOSTING_SERVER': hostingServer = server
-    
+
     print()
     print("ArcGIS Enterprise deployment characteristics")
     print("- Hosting server configured: %s" % (hostingServer is not None))
     if hostingServer is None: print("-- WARNING: lack of a hosting server will prevent many functions from working")
     else:
-        hasRelationalDataStore = checkArcGISDataStoreRelational(hostingServer['adminUrl'], hostingServer['url'], token)
-        print("- ArcGIS Data Store (relational) configured with hosting server: %s" % hasRelationalDataStore)
-        if not hasRelationalDataStore: print("-- WARNING: you must use ArcGIS Data Store to configure a relational database")
+        hostingServerValid, validationMsgs = validateHostingServer(portalUrl, hostingServer['id'], token)
+        if not hostingServerValid: print('-- ERROR: unable to validate hosting server')
+        for msg in validationMsgs: print('-- ' + msg)
 
-        analysisServiceStarted = checkAnalysisServices(hostingServer['url'], token)
-        print("- Hosting server's spatial analysis service is started and available: %s" % analysisServiceStarted)
-        if not analysisServiceStarted: print("-- WARNING: analysis service not started or unreachable")
+        if hostingServerValid:
+            hasRelationalDataStore = checkArcGISDataStoreRelational(hostingServer['adminUrl'], hostingServer['url'], token)
+            print("- ArcGIS Data Store (relational) configured with hosting server: %s" % hasRelationalDataStore)
+            if not hasRelationalDataStore: print("-- WARNING: you must use ArcGIS Data Store to configure a relational database")
 
-        print("- Hosted feature services are supported: %s" % supportsHostedServices)
-        if not supportsHostedServices: print("-- WARNING: this indicates a lack of ArcGIS Data Store configured with the relational data store type")
-        print("- Scene services are supported: %s" % supportsSceneServices)
-        if not supportsSceneServices: print("-- WARNING: this indicates a lack of ArcGIS Data Store configured with the tile cache data store type")
+            print('- Analysis Tools helper service is configured: %s' % analysisHelperServiceRegistered)
+            if not analysisHelperServiceRegistered: print('-- WARNING: analysis tools helper service not configured')
+
+            analysisServiceStarted = checkAnalysisServices(hostingServer['url'], token)
+            print("- Hosting server's spatial analysis service is started and available: %s" % analysisServiceStarted)
+            if not analysisServiceStarted: print("-- WARNING: analysis service not started or unreachable")
+
+            print("- Hosted feature services are supported: %s" % supportsHostedServices)
+            if not supportsHostedServices: print("-- WARNING: this indicates a lack of ArcGIS Data Store configured with the relational data store type")
+            print("- Scene services are supported: %s" % supportsSceneServices)
+            if not supportsSceneServices: print("-- WARNING: this indicates a lack of ArcGIS Data Store (tile cache)")
+
+def validateHostingServer(portalUrl, hostingServerID, token):
+    params = {'token':token, 'f':'pjson', 'types':'egdb'}
+    request = urllib.request.Request(portalUrl + '/portaladmin/federation/servers/' + hostingServerID + '/validate?' + urllib.parse.urlencode(params))
+    try:
+        response = urllib.request.urlopen(request)
+        result = json.loads(response.read().decode('utf-8'))
+        msgs = []
+        if 'messages' in result: msgs = result['messages']
+        if 'status' in result and result['status'] == 'success': return True, msgs
+    except: pass
+    return False, msgs
 
 def checkArcGISDataStoreRelational(serverAdminUrl, serverUrl, portalToken):
     params = {'token':portalToken, 'f':'pjson', 'types':'egdb'}
@@ -114,7 +144,7 @@ def checkArcGISDataStoreRelational(serverAdminUrl, serverUrl, portalToken):
     try: response = urllib.request.urlopen(request)
     except:
         request = urllib.request.Request(serverUrl + '/admin/data/findItems', urllib.parse.urlencode(params).encode('ascii'))
-        try: 
+        try:
             response = urllib.request.urlopen(request)
             print('-- WARNING: hosting server administrative endpoint not')
             print('            accessible from this machine; this may cause')
@@ -141,7 +171,7 @@ def checkAnalysisServices(serverUrl, portalToken):
         else: return True
     except:
         return False
-    
+
 def getFederatedServers(portalUrl, token):
     params = {'token':token, 'f':'json'}
     request = urllib.request.Request(portalUrl + '/portaladmin/federation/servers?%s' % urllib.parse.urlencode(params))
