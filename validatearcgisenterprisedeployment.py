@@ -86,11 +86,24 @@ def main(argv):
     supportsSceneServices = portalSelf['supportsSceneServices']
 
     # check analysis tools helper service registration and valid url
+    helperServices = portalSelf['helperServices']
     analysisHelperServiceRegistered = False
-    if 'analysis' in portalSelf['helperServices']:
-        if 'url' in portalSelf['helperServices']['analysis']:
+    if 'analysis' in helperServices:
+        if 'url' in helperServices['analysis']:
             analysisHelperService = portalSelf['helperServices']['analysis']['url']
             analysisHelperServiceRegistered = analysisHelperService != ''
+
+    geoanalyticsHelperServiceRegistered = False
+    if 'geoanalytics' in portalSelf['helperServices']:
+        if 'url' in helperServices['geoanalytics']:
+            geoanalyticsHelperService = helperServices['geoanalytics']['url']
+            geoanalyticsHelperServiceRegistered = geoanalyticsHelperService != ''
+
+    rasterAnalyticsHelperServiceRegistered = False
+    if 'rasterAnalytics' in portalSelf['helperServices']:
+        if 'url' in helperServices['rasterAnalytics']:
+            rasterAnalyticsHelperService = helperServices['rasterAnalytics']['url']
+            rasterAnalyticsHelperServiceRegistered = rasterAnalyticsHelperService != ''
 
     # enumerate federated servers and find hosting server
     federatedServers = getFederatedServers(portalUrl, token)
@@ -125,6 +138,9 @@ def main(argv):
             if not supportsHostedServices: print("-- WARNING: this indicates a lack of ArcGIS Data Store configured with the relational data store type")
             print("- Scene services are supported: %s" % supportsSceneServices)
             if not supportsSceneServices: print("-- WARNING: this indicates a lack of ArcGIS Data Store (tile cache)")
+
+            print('- GeoAnalytics configured: %s' % geoanalyticsHelperServiceRegistered)
+            print('- Raster Analytics configured: %s' % rasterAnalyticsHelperServiceRegistered)
 
 def validateHostingServer(portalUrl, hostingServerID, token):
     params = {'token':token, 'f':'pjson', 'types':'egdb'}
