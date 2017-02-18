@@ -18,65 +18,14 @@ import json
 import traceback
 
 def main(argv):
-    currentHost = socket.getfqdn().lower()
-    currentDir = os.getcwd()
-    portalHost = ''
-    context = ''
-    adminUsername = ''
-    adminPassword = ''
-    outputDir = ''
-    token = ''
-    if len(sys.argv) > 0:
-        try:
-            opts, args = getopt.getopt(argv, "?hn:c:u:p:t:", ("help", "portalurl=", "context=", "user=", "password=", "token=", "ignoressl"))
-        except:
-            print('One or more invalid arguments')
-            print('validatebasedeployment.py [-n <portal hostname>] [-c <portal context>] [-u <admin username>] [-p <admin password>] [-t <token>]')
-            sys.exit(2)
+    parameters = parseInputParameters(argv)
+    portalUrl = parameters['portalUrl']
+    token = parameters['token']
 
-        for opt, arg in opts:
-            if opt in ('-n', '--portalurl'):
-                portalHost = arg
-            elif opt in ('-c', '--context'):
-                context = arg
-            elif opt in ('-u', '--user'):
-                adminUsername = arg
-            elif opt in ('-p', '--password'):
-                adminPassword = arg
-            elif opt == '--ignoressl':
-                # disable SSL certificate checking to avoid errors with self-signed certs
-                # this is NOT a generally recommended practice
-                _create_unverified_https_context = ssl._create_unverified_context
-                ssl._create_default_https_context = _create_unverified_https_context
-            elif opt in ('-t', '--token'):
-                token = arg
-            elif opt in ('-h', '-?', '--help'):
-                print('validatebasedeployment.py [-n <portal hostname>] [-c <portal context>] [-u <admin username>] [-p <admin password>] [-t <token>]')
-                sys.exit(0)
-
-    # Prompt for portal hostname
-    if portalHost == '':
-        portalHost = input('Enter ArcGIS Enterprise FQDN [' + currentHost + ']: ')
-        if portalHost == '': portalHost = currentHost
-
-    # Prompt for portal context
-    if context == '':
-        context = input('Enter context of the portal instance [\'arcgis\']: ')
-        if context == '': context = 'arcgis'
-
-    # Prompt for admin username
-    if adminUsername == '' and token == '':
-        while adminUsername == '':
-            adminUsername = input('Enter administrator username: ')
-
-    # Prompt for admin password
-    if adminPassword == '' and token == '':
-        while adminPassword == '':
-            adminPassword = getpass.getpass(prompt='Enter administrator password: ')
-
-    portalUrl = 'https://' + portalHost + '/' + context
     if token == '':
-        token = generateToken(adminUsername, adminPassword, portalHost, portalUrl)
+        adminUsername = parameters['adminUsername']
+        adminPassword = parameters['adminPassword']
+        token = generateToken(adminUsername, adminPassword, portalUrl)
         if token == 'Failed':
             print('Invalid administrator username or password.')
             sys.exit(1)
@@ -141,6 +90,67 @@ def main(argv):
 
             print('- GeoAnalytics configured: %s' % geoanalyticsHelperServiceRegistered)
             print('- Raster Analytics configured: %s' % rasterAnalyticsHelperServiceRegistered)
+
+def parseInputParameters(argv):
+    currentHost = socket.getfqdn().lower()
+    currentDir = os.getcwd()
+    portalHost = ''
+    context = ''
+    adminUsername = ''
+    adminPassword = ''
+    outputDir = ''
+    token = ''
+    if len(sys.argv) > 0:
+        try:
+            opts, args = getopt.getopt(argv, "?hn:c:u:p:t:", ("help", "portalurl=", "context=", "user=", "password=", "token=", "ignoressl"))
+        except:
+            print('One or more invalid arguments')
+            print('validatebasedeployment.py [-n <portal hostname>] [-c <portal context>] [-u <admin username>] [-p <admin password>] [-t <token>]')
+            sys.exit(2)
+
+        for opt, arg in opts:
+            if opt in ('-n', '--portalurl'):
+                portalHost = arg
+            elif opt in ('-c', '--context'):
+                context = arg
+            elif opt in ('-u', '--user'):
+                adminUsername = arg
+            elif opt in ('-p', '--password'):
+                adminPassword = arg
+            elif opt == '--ignoressl':
+                # disable SSL certificate checking to avoid errors with self-signed certs
+                # this is NOT a generally recommended practice
+                _create_unverified_https_context = ssl._create_unverified_context
+                ssl._create_default_https_context = _create_unverified_https_context
+            elif opt in ('-t', '--token'):
+                token = arg
+            elif opt in ('-h', '-?', '--help'):
+                print('validatebasedeployment.py [-n <portal hostname>] [-c <portal context>] [-u <admin username>] [-p <admin password>] [-t <token>]')
+                sys.exit(0)
+
+    # Prompt for portal hostname
+    if portalHost == '':
+        portalHost = input('Enter ArcGIS Enterprise FQDN [' + currentHost + ']: ')
+        if portalHost == '': portalHost = currentHost
+
+    # Prompt for portal context
+    if context == '':
+        context = input('Enter context of the portal instance [\'arcgis\']: ')
+        if context == '': context = 'arcgis'
+
+    # Prompt for admin username
+    if adminUsername == '' and token == '':
+        while adminUsername == '':
+            adminUsername = input('Enter administrator username: ')
+
+    # Prompt for admin password
+    if adminPassword == '' and token == '':
+        while adminPassword == '':
+            adminPassword = getpass.getpass(prompt='Enter administrator password: ')
+
+    portalUrl = 'https://' + portalHost + '/' + context
+    parameters = {'adminPassword':adminPassword, 'adminUsername':adminUsername, 'portalUrl':portalUrl, 'token':token}
+    return parameters
 
 def validateHostingServer(portalUrl, hostingServerID, token):
     params = {'token':token, 'f':'pjson', 'types':'egdb'}
@@ -207,7 +217,7 @@ def getPortalSelf(portalUrl, token):
     portalSelf = json.loads(response.read().decode('utf-8'))
     return portalSelf
 
-def generateToken(username, password, portalHost, portalUrl):
+def generateToken(username, password, portalUrl):
     params = {'username':username,
               'password':password,
               'referer':portalUrl,
