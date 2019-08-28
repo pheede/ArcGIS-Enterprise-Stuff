@@ -25,11 +25,12 @@ def listServices(server):
             # skip everything that's not a map service; we don't support anything else in the shared pool at 10.7.x
             if service.properties['type'] != 'MapServer': continue
 
-            if service.properties['provider'].lower() == 'arcobjects': # provider='ArcObjects' means the service is running under the ArcMap runtime i.e. published from ArcMap
+            # the provider value is case-sensitive!
+            if service.properties['provider'] == 'ArcObjects': # provider='ArcObjects' means the service is running under the ArcMap runtime i.e. published from ArcMap
                 arcmapsvcs.append(service)
-            elif service.properties['provider'].lower() == 'arcobjects11': # provider='ArcObjects11' means the service is running under the ArcGIS Pro runtime i.e. published from ArcGIS Pro
+            elif service.properties['provider'] == 'ArcObjects11': # provider='ArcObjects11' means the service is running under the ArcGIS Pro runtime i.e. published from ArcGIS Pro
                 prosvcs.append(service)
-            elif service.properties['provider'].lower() == 'dmaps': # provider='DMaps' means the service is running in the shared instance pool (and thus running under the ArcGIS Pro provider runtime)
+            elif service.properties['provider'] == 'DMaps': # provider='DMaps' means the service is running in the shared instance pool (and thus running under the ArcGIS Pro provider runtime)
                 sharedinstancesvcs.append(service)
             else: pass # whoa nelly! unknown type of provider.. must be a fancy new server released after this script was written
 
@@ -67,6 +68,9 @@ else:
 
         # switch Pro-based service to shared instance pool
         if args.update:
+            # updating the provider can only be done via the dedicated changeProvider operation, it can't be  done by 
+            # simply editing the service properties directly (backwards compatibility concession to avoid older 
+            # ArcGIS Desktop clients from modifying this property incorrectly)
             data = urllib.parse.urlencode({ 'token' : service._con.token, 'provider' : 'DMaps', 'f' : 'json' }).encode('ascii')
             with urllib.request.urlopen(service.url + '/changeProvider', data) as f:
                 print(f.read().decode('utf-8'))
