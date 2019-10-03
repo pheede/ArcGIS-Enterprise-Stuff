@@ -62,7 +62,7 @@ print()
 if len(prosvcs) == 0:
     print('There are no services published from ArcGIS Pro that are running with dedicated instances.')
 else:
-    print('Services from ArcGIS Pro eligible to run in the shared instance pool:')
+    print('Services from ArcGIS Pro that may be eligible to run in the shared instance pool:')
     for service in prosvcs:
         print('- ' + service.properties['serviceName'])
 
